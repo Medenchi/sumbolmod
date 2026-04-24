@@ -10,26 +10,24 @@ on:
 
 jobs:
   validate:
-    name: 🔍 Проверка всех JSON файлов
+    name: 🔍 Проверка JSON файлов
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Клонирование
         uses: actions/checkout@v4
 
-      - name: 🐍 Установка Python
+      - name: 🐍 Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 🔍 Валидация всех JSON
+      - name: 🔍 Все JSON файлы
         run: |
           python3 -c "
           import json, os, sys
-
           errors = []
           checked = 0
-
           for root, dirs, files in os.walk('src/main/resources'):
               for file in files:
                   if file.endswith('.json'):
@@ -42,22 +40,19 @@ jobs:
                       except json.JSONDecodeError as e:
                           errors.append(f'  FAIL: {path} -> {e}')
                           print(f'  FAIL: {path} -> {e}')
-
-          print(f'Проверено: {checked} файлов, ошибок: {len(errors)}')
+          print(f'Проверено: {checked}, ошибок: {len(errors)}')
           if errors:
               sys.exit(1)
           "
 
-      - name: 🔍 Проверка geo.json моделей
+      - name: 🔍 GeckoLib geo.json
         run: |
           python3 -c "
           import json, os, sys
-
           geo_dir = 'src/main/resources/assets/symbolmod/geo'
           if not os.path.exists(geo_dir):
               print('Папка geo не найдена — пропускаем')
               sys.exit(0)
-
           errors = []
           for file in os.listdir(geo_dir):
               if not file.endswith('.geo.json'):
@@ -65,37 +60,30 @@ jobs:
               path = os.path.join(geo_dir, file)
               with open(path) as f:
                   data = json.load(f)
-
               if 'minecraft:geometry' not in data:
                   errors.append(f'{file}: нет minecraft:geometry')
                   continue
-
               geo = data['minecraft:geometry']
               if not geo:
                   errors.append(f'{file}: пустой geometry')
                   continue
-
-              model = geo[0]
-              bones = model.get('bones', [])
+              bones = geo[0].get('bones', [])
               names = [b['name'] for b in bones]
               print(f'  OK: {file} — {len(bones)} костей: {names}')
-
           if errors:
               [print(f'  FAIL: {e}') for e in errors]
               sys.exit(1)
           print('Все geo.json валидны!')
           "
 
-      - name: 🔍 Проверка animation.json
+      - name: 🔍 GeckoLib animation.json
         run: |
           python3 -c "
           import json, os, sys
-
           anim_dir = 'src/main/resources/assets/symbolmod/animations'
           if not os.path.exists(anim_dir):
               print('Папка animations не найдена — пропускаем')
               sys.exit(0)
-
           errors = []
           for file in os.listdir(anim_dir):
               if not file.endswith('.animation.json'):
@@ -103,43 +91,36 @@ jobs:
               path = os.path.join(anim_dir, file)
               with open(path) as f:
                   data = json.load(f)
-
               if 'animations' not in data:
                   errors.append(f'{file}: нет animations')
                   continue
-
               anims = data['animations']
-              print(f'  OK: {file} — {len(anims)} анимаций:')
+              print(f'  OK: {file} — {len(anims)} анимаций')
               for name, anim in anims.items():
                   length = anim.get('animation_length', '?')
                   loop = anim.get('loop', False)
-                  print(f'     • {name} ({length}с, loop={loop})')
-
+                  print(f'     • {name} ({length}с loop={loop})')
           if errors:
               [print(f'  FAIL: {e}') for e in errors]
               sys.exit(1)
           print('Все animation.json валидны!')
           "
 
-      - name: 🔍 Проверка sounds.json
+      - name: 🔍 sounds.json
         run: |
           python3 -c "
           import json, os, sys
-
           path = 'src/main/resources/assets/symbolmod/sounds.json'
           if not os.path.exists(path):
               print('sounds.json не найден — пропускаем')
               sys.exit(0)
-
           with open(path) as f:
               data = json.load(f)
-
           cats = {}
           for key in data:
               parts = key.split('.')
               cat = parts[1] if len(parts) > 1 else 'other'
               cats[cat] = cats.get(cat, 0) + 1
-
           print(f'sounds.json — {len(data)} звуков:')
           for cat, count in sorted(cats.items()):
               print(f'  • {cat}: {count}')

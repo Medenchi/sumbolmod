@@ -24,37 +24,11 @@ env:
 jobs:
 
   # ============================================================
-  # JOB 1 — ПРОВЕРКА
-  # ============================================================
-  validate:
-    name: ✅ Проверка кода
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 📥 Клонирование репозитория
-        uses: actions/checkout@v4
-
-      - name: ☕ Установка Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'gradle'
-
-      - name: 🔍 Проверка Gradle wrapper
-        uses: gradle/wrapper-validation-action@v2
-
-      - name: 📋 Вывод информации о среде
-        run: |
-          java -version
-
-  # ============================================================
-  # JOB 2 — СБОРКА
+  # JOB 1 — СБОРКА
   # ============================================================
   build:
     name: 🔨 Сборка мода
     runs-on: ubuntu-latest
-    needs: validate
 
     outputs:
       mod_version: ${{ steps.get_version.outputs.version }}
@@ -83,22 +57,22 @@ jobs:
           echo "mc_version=${MC_VERSION}" >> $GITHUB_OUTPUT
           echo "📦 Версия мода: ${VERSION}"
           echo "🎮 Версия Minecraft: ${MC_VERSION}"
-          echo "📁 Имя JAR: ${JAR_NAME}"
 
       - name: 🔨 Сборка JAR
         uses: gradle/gradle-build-action@v3
         with:
           arguments: build --no-daemon --stacktrace
+          gradle-version: wrapper
 
-      - name: ✅ Проверка существования JAR
+      - name: ✅ Проверка JAR
         run: |
-          echo "📂 Содержимое папки build/libs:"
+          echo "📂 build/libs:"
           ls -la build/libs/
           if [ -z "$(ls -A build/libs/*.jar 2>/dev/null)" ]; then
-            echo "❌ JAR файл не найден!"
+            echo "❌ JAR не найден!"
             exit 1
           fi
-          echo "✅ JAR файл найден!"
+          echo "✅ JAR найден!"
 
       - name: 🔍 Валидация fabric.mod.json
         run: |
@@ -111,9 +85,7 @@ jobs:
           if missing:
               print(f'❌ Отсутствуют поля: {missing}')
               sys.exit(1)
-          print(f'✅ fabric.mod.json валиден')
-          print(f'   ID: {data[\"id\"]}')
-          print(f'   Версия: {data[\"version\"]}')
+          print(f'✅ fabric.mod.json валиден — {data[\"id\"]} v{data[\"version\"]}')
           "
 
       - name: 🔍 Валидация JSON файлов
@@ -132,7 +104,7 @@ jobs:
                           checked += 1
                       except json.JSONDecodeError as e:
                           errors.append(f'{path}: {e}')
-          print(f'Проверено: {checked} файлов')
+          print(f'Проверено: {checked} JSON файлов')
           if errors:
               print('ОШИБКИ:')
               [print(e) for e in errors]
@@ -140,7 +112,7 @@ jobs:
           print('Все JSON валидны!')
           "
 
-      - name: 📤 Загрузка JAR как артефакт
+      - name: 📤 Загрузка артефакта
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.get_version.outputs.jar_name }}
@@ -150,7 +122,7 @@ jobs:
             !build/libs/*-sources.jar
           retention-days: 30
 
-      - name: 📊 Итог сборки
+      - name: 📊 Итог
         run: |
           echo "================================================"
           echo "  🎬 МОД СИМВОЛ — СБОРКА ЗАВЕРШЕНА"
@@ -162,7 +134,7 @@ jobs:
           echo "================================================"
 
   # ============================================================
-  # JOB 3 — РЕЛИЗ
+  # JOB 2 — РЕЛИЗ
   # ============================================================
   release:
     name: 🚀 Публикация релиза
@@ -171,7 +143,7 @@ jobs:
     if: github.event_name == 'release'
 
     steps:
-      - name: 📥 Клонирование репозитория
+      - name: 📥 Клонирование
         uses: actions/checkout@v4
 
       - name: 📥 Скачивание артефакта
@@ -179,9 +151,6 @@ jobs:
         with:
           name: ${{ needs.build.outputs.jar_name }}
           path: build/libs/
-
-      - name: 📋 Список файлов
-        run: ls -la build/libs/
 
       - name: 🚀 Загрузка в GitHub Release
         uses: softprops/action-gh-release@v2

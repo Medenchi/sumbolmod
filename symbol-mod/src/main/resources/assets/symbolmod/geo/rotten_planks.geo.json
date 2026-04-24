@@ -1,0 +1,94 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.rotten_planks",
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 1.5,
+        "visible_bounds_offset": [0, 0.5, 0]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [0, 0, 0]
+        },
+        {
+          "name": "plank_main",
+          "parent": "root",
+          "pivot": [0, 8, 0],
+          "cubes": [
+            {
+              "origin": [-8, 0, -8],
+              "size": [16, 8, 16],
+              "uv": [0, 0]
+            }
+          ]
+        },
+        {
+          "name": "crack_1",
+          "parent": "plank_main",
+          "pivot": [-2, 8, 0],
+          "cubes": [
+            {
+              "origin": [-3, 6, -8],
+              "size": [2, 2, 6],
+              "uv": [32, 0],
+              "inflate": 0.1
+            }
+          ]
+        },
+        {
+          "name": "crack_2",
+          "parent": "plank_main",
+          "pivot": [3, 8, 2],
+          "cubes": [
+            {
+              "origin": [2, 5, 1],
+              "size": [2, 3, 5],
+              "uv": [32, 8],
+              "inflate": 0.1
+            }
+          ]
+        },
+        {
+          "name": "splinter_1",
+          "parent": "plank_main",
+          "pivot": [-4, 8, -3],
+          "cubes": [
+            {
+              "origin": [-5, 7, -4],
+              "size": [2, 1, 3],
+              "uv": [0, 24]
+            }
+          ]
+        },
+        {
+          "name": "splinter_2",
+          "parent": "plank_main",
+          "pivot": [4, 8, 3],
+          "cubes": [
+            {
+              "origin": [3, 7, 2],
+              "size": [3, 1, 2],
+              "uv": [8, 24]
+            }
+          ]
+        },
+        {
+          "name": "hole",
+          "parent": "plank_main",
+          "pivot": [0, 8, 0],
+          "cubes": [
+            {
+              "origin": [-1.5, 7, -1.5],
+              "size": [3, 1, 3],
+              "uv": [16, 24],
+              "inflate": 0.2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,9 @@ on:
       - 'feature/**'
       - 'fix/**'
 
+env:
+  GRADLE_VERSION: 8.4
+
 jobs:
   dev_build:
     name: 🛠️ Быстрая dev сборка
@@ -24,10 +27,10 @@ jobs:
           cache: 'gradle'
 
       - name: 🔨 Сборка
-        uses: gradle/gradle-build-action@v3
+        uses: gradle/actions/setup-gradle@v3
         with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
           arguments: build --no-daemon
-          gradle-version: wrapper
 
       - name: 📤 Загрузка dev артефакта
         uses: actions/upload-artifact@v4

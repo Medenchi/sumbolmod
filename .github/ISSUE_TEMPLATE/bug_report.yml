@@ -1,0 +1,61 @@
+name: 🐛 Баг репорт
+description: Сообщить об ошибке в моде
+title: "[БАГ] "
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🎬 Символ — Репорт об ошибке
+
+  - type: dropdown
+    id: act
+    attributes:
+      label: В каком акте произошла ошибка?
+      options:
+        - Стартовая комната
+        - Акт 0 — Увольнение
+        - Акт 1 — Стекло
+        - Акт 2 — Деревня
+        - Акт 3 — Наблюдатели
+        - Концовка A
+        - Концовка B
+        - Концовка C
+        - Концовка D
+        - Другое
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание ошибки
+      placeholder: Что произошло?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги для воспроизведения
+      placeholder: |
+        1. Зашёл в...
+        2. Нажал...
+        3. Произошло...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи (crash-report или latest.log)
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия мода
+      placeholder: "1.0.0"
+    validations:
+      required: true

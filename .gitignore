@@ -1,0 +1,58 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+
+# Minecraft / Fabric
+run/
+*.run/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Временные файлы
+*.tmp
+*.bak
+*.swp
+*~
+
+# Gradle wrapper (оставляем gradlew но не бинарники)
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Скомпилированные классы
+*.class
+
+# JAR (кроме зависимостей)
+*.jar
+!gradle/wrapper/*.jar
+
+# Звуки (загружать вручную — слишком большие)
+src/main/resources/assets/symbolmod/sounds/**/*.ogg
+
+# Текстуры тоже можно исключить если большие
+# src/main/resources/assets/symbolmod/textures/
+
+# Секреты
+.env
+secrets.properties

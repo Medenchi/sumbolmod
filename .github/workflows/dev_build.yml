@@ -27,6 +27,7 @@ jobs:
         uses: gradle/gradle-build-action@v3
         with:
           arguments: build --no-daemon
+          gradle-version: wrapper
 
       - name: 📤 Загрузка dev артефакта
         uses: actions/upload-artifact@v4
@@ -42,7 +43,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Dev сборка успешна! SHA: ${{ github.sha }}"
+            echo "✅ Dev сборка успешна!"
           else
-            echo "❌ Dev сборка провалилась! SHA: ${{ github.sha }}"
+            echo "❌ Dev сборка провалилась!"
           fi

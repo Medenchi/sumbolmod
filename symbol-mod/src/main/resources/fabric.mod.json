@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "symbolmod",
+  "version": "1.0.0",
+  "name": "Символ",
+  "description": "Сюжетный мод для карты Символ",
+  "authors": ["DENCHy"],
+  "license": "UNLICENSED",
+  "icon": "assets/symbolmod/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.symbolmod.SymbolMod"],
+    "client": ["com.symbolmod.SymbolModClient"]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "fabric": "*",
+    "minecraft": "1.20.1",
+    "java": ">=17",
+    "geckolib": "*"
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.start_button",
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 3,
+        "visible_bounds_offset": [0, 1, 0]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [0, 0, 0]
+        },
+        {
+          "name": "base",
+          "parent": "root",
+          "pivot": [0, 8, 0],
+          "cubes": [
+            {
+              "origin": [-7, 0, -7],
+              "size": [14, 3, 14],
+              "uv": [0, 0]
+            }
+          ]
+        },
+        {
+          "name": "pillar",
+          "parent": "base",
+          "pivot": [0, 3, 0],
+          "cubes": [
+            {
+              "origin": [-1.5, 3, -1.5],
+              "size": [3, 10, 3],
+              "uv": [0, 18]
+            }
+          ]
+        },
+        {
+          "name": "button_body",
+          "parent": "pillar",
+          "pivot": [0, 13, 0],
+          "cubes": [
+            {
+              "origin": [-6, 13, -6],
+              "size": [12, 8, 12],
+              "uv": [24, 0]
+            }
+          ]
+        },
+        {
+          "name": "button_top",
+          "parent": "button_body",
+          "pivot": [0, 21, 0],
+          "cubes": [
+            {
+              "origin": [-5, 21, -5],
+              "size": [10, 2, 10],
+              "uv": [24, 20]
+            }
+          ]
+        },
+        {
+          "name": "glow_ring",
+          "parent": "button_body",
+          "pivot": [0, 17, 0],
+          "cubes": [
+            {
+              "origin": [-7, 14, -7],
+              "size": [14, 6, 14],
+              "uv": [0, 32],
+              "inflate": 0.3
+            }
+          ]
+        },
+        {
+          "name": "particle_top_1",
+          "parent": "button_top",
+          "pivot": [3, 23, 3],
+          "cubes": [
+            {
+              "origin": [2.5, 22, 2.5],
+              "size": [1, 2, 1],
+              "uv": [48, 0]
+            }
+          ]
+        },
+        {
+          "name": "particle_top_2",
+          "parent": "button_top",
+          "pivot": [-3, 23, 3],
+          "cubes": [
+            {
+              "origin": [-3.5, 22, 2.5],
+              "size": [1, 2, 1],
+              "uv": [48, 0]
+            }
+          ]
+        },
+        {
+          "name": "particle_top_3",
+          "parent": "button_top",
+          "pivot": [3, 23, -3],
+          "cubes": [
+            {
+              "origin": [2.5, 22, -3.5],
+              "size": [1, 2, 1],
+              "uv": [48, 0]
+            }
+          ]
+        },
+        {
+          "name": "particle_top_4",
+          "parent": "button_top",
+          "pivot": [-3, 23, -3],
+          "cubes": [
+            {
+              "origin": [-3.5, 22, -3.5],
+              "size": [1, 2, 1],
+              "uv": [48, 0]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+name: 🛠️ Dev сборка
+
+on:
+  push:
+    branches:
+      - dev
+      - 'feature/**'
+      - 'fix/**'
+
+jobs:
+  dev_build:
+    name: 🛠️ Быстрая dev сборка
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Клонирование
+        uses: actions/checkout@v4
+
+      - name: ☕ Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+
+      - name: 📦 Кэш Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: 🔑 Права
+        run: chmod +x gradlew
+
+      - name: 🔨 Сборка
+        run: ./gradlew build --no-daemon
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Xmx2g"
+
+      - name: 📤 Загрузка dev артефакта
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbolmod-dev-${{ github.sha }}
+          path: |
+            build/libs/*.jar
+            !build/libs/*-dev.jar
+            !build/libs/*-sources.jar
+          retention-days: 7
+
+      - name: 💬 Статус сборки
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Dev сборка успешна! SHA: ${{ github.sha }}"
+          else
+            echo "❌ Dev сборка провалилась! SHA: ${{ github.sha }}"
+          fi

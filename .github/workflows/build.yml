@@ -38,7 +38,7 @@ jobs:
           cache: 'gradle'
 
       - name: 🔑 Права на gradlew
-        run: git update-index --chmod=+x gradlew
+        run: chmod +x gradlew
 
       - name: 📖 Версия мода
         id: get_version
@@ -49,23 +49,41 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "jar_name=${JAR_NAME}" >> $GITHUB_OUTPUT
           echo "mc_version=${MC_VERSION}" >> $GITHUB_OUTPUT
-          echo "Версия: ${VERSION}, MC: ${MC_VERSION}"
+          echo "📦 Версия: ${VERSION}"
+          echo "🎮 Minecraft: ${MC_VERSION}"
 
-      - name: 🔨 Сборка
+      - name: 🔨 Сборка JAR
         run: ./gradlew build --no-daemon --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Xmx2g"
 
       - name: ✅ Проверка JAR
         run: |
+          echo "📂 Содержимое build/libs:"
           ls -la build/libs/
           if [ -z "$(ls -A build/libs/*.jar 2>/dev/null)" ]; then
-            echo "JAR не найден!"
+            echo "❌ JAR не найден!"
             exit 1
           fi
-          echo "JAR найден!"
+          echo "✅ JAR найден!"
 
-      - name: 🔍 Валидация JSON
+      - name: 🔍 Валидация fabric.mod.json
+        run: |
+          python3 -c "
+          import json, sys
+          with open('src/main/resources/fabric.mod.json') as f:
+              data = json.load(f)
+          required = ['id', 'version', 'name', 'entrypoints', 'depends']
+          missing = [k for k in required if k not in data]
+          if missing:
+              print(f'❌ Отсутствуют поля: {missing}')
+              sys.exit(1)
+          print(f'✅ fabric.mod.json валиден')
+          print(f'   ID: {data[\"id\"]}')
+          print(f'   Версия: {data[\"version\"]}')
+          "
+
+      - name: 🔍 Валидация всех JSON
         run: |
           python3 -c "
           import json, os, sys
@@ -83,12 +101,13 @@ jobs:
                           errors.append(f'{path}: {e}')
           print(f'Проверено: {checked} JSON файлов')
           if errors:
+              print('ОШИБКИ:')
               [print(e) for e in errors]
               sys.exit(1)
-          print('Все JSON валидны!')
+          print('✅ Все JSON валидны!')
           "
 
-      - name: 📤 Артефакт
+      - name: 📤 Загрузка артефакта
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.get_version.outputs.jar_name }}
@@ -98,30 +117,56 @@ jobs:
             !build/libs/*-sources.jar
           retention-days: 30
 
+      - name: 📊 Итог сборки
+        run: |
+          echo "================================================"
+          echo "  🎬 МОД СИМВОЛ — СБОРКА ЗАВЕРШЕНА"
+          echo "================================================"
+          echo "  📦 Версия:    ${{ steps.get_version.outputs.version }}"
+          echo "  🎮 Minecraft: ${{ steps.get_version.outputs.mc_version }}"
+          echo "  🌿 Ветка:     ${{ github.ref_name }}"
+          echo "  💬 Коммит:    ${{ github.sha }}"
+          echo "================================================"
+
   release:
-    name: 🚀 Релиз
+    name: 🚀 Публикация релиза
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'release'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: 📥 Клонирование
+        uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - name: 📥 Скачивание артефакта
+        uses: actions/download-artifact@v4
         with:
           name: ${{ needs.build.outputs.jar_name }}
           path: build/libs/
 
-      - uses: softprops/action-gh-release@v2
+      - name: 📋 Список файлов
+        run: ls -la build/libs/
+
+      - name: 🚀 Загрузка в GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             build/libs/*.jar
             !build/libs/*-dev.jar
             !build/libs/*-sources.jar
           body: |
-            ## 🎬 Символ v${{ needs.build.outputs.mod_version }}
-            - Minecraft: ${{ needs.build.outputs.mc_version }}
-            - Fabric Loader ≥ 0.15.0
-            - GeckoLib 4.4
+            ## 🎬 Символ — Версия ${{ needs.build.outputs.mod_version }}
+
+            ### 📦 Установка
+            1. [Fabric Loader](https://fabricmc.net/use/installer/)
+            2. [Fabric API](https://modrinth.com/mod/fabric-api)
+            3. [GeckoLib](https://modrinth.com/mod/geckolib)
+            4. JAR → папка `mods/`
+
+            ### 🎮 Требования
+            - Minecraft: `${{ needs.build.outputs.mc_version }}`
+            - Fabric Loader: `≥ 0.15.0`
+            - Fabric API: `0.92.0+1.20.1`
+            - GeckoLib: `4.4`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

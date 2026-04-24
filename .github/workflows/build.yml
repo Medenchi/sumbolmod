@@ -24,7 +24,7 @@ env:
 jobs:
 
   # ============================================================
-  # JOB 1 — ПРОВЕРКА КОДА
+  # JOB 1 — ПРОВЕРКА
   # ============================================================
   validate:
     name: ✅ Проверка кода
@@ -39,19 +39,7 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
-
-      - name: 📦 Кэш Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: 🔑 Права на Gradle
-        run: chmod +x gradlew
+          cache: 'gradle'
 
       - name: 🔍 Проверка Gradle wrapper
         uses: gradle/wrapper-validation-action@v2
@@ -59,7 +47,6 @@ jobs:
       - name: 📋 Вывод информации о среде
         run: |
           java -version
-          ./gradlew --version
 
   # ============================================================
   # JOB 2 — СБОРКА
@@ -72,6 +59,7 @@ jobs:
     outputs:
       mod_version: ${{ steps.get_version.outputs.version }}
       jar_name: ${{ steps.get_version.outputs.jar_name }}
+      mc_version: ${{ steps.get_version.outputs.mc_version }}
 
     steps:
       - name: 📥 Клонирование репозитория
@@ -82,19 +70,7 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
-
-      - name: 📦 Кэш Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: 🔑 Права на Gradle
-        run: chmod +x gradlew
+          cache: 'gradle'
 
       - name: 📖 Получение версии мода
         id: get_version
@@ -110,9 +86,9 @@ jobs:
           echo "📁 Имя JAR: ${JAR_NAME}"
 
       - name: 🔨 Сборка JAR
-        run: ./gradlew build --no-daemon --stacktrace
-        env:
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Xmx2g"
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: build --no-daemon --stacktrace
 
       - name: ✅ Проверка существования JAR
         run: |
@@ -126,7 +102,6 @@ jobs:
 
       - name: 🔍 Валидация fabric.mod.json
         run: |
-          echo "📋 Проверка fabric.mod.json..."
           python3 -c "
           import json, sys
           with open('src/main/resources/fabric.mod.json') as f:
@@ -139,49 +114,31 @@ jobs:
           print(f'✅ fabric.mod.json валиден')
           print(f'   ID: {data[\"id\"]}')
           print(f'   Версия: {data[\"version\"]}')
-          print(f'   Название: {data[\"name\"]}')
           "
 
-      - name: 🔍 Валидация GeckoLib JSON файлов
+      - name: 🔍 Валидация JSON файлов
         run: |
-          echo "📋 Проверка .geo.json файлов..."
-          ERRORS=0
-          find src/main/resources/assets -name "*.geo.json" | while read f; do
-            python3 -c "
-          import json, sys
-          try:
-              with open('$f') as file:
-                  json.load(file)
-              print(f'  ✅ $f')
-          except json.JSONDecodeError as e:
-              print(f'  ❌ $f: {e}')
+          python3 -c "
+          import json, os, sys
+          errors = []
+          checked = 0
+          for root, dirs, files in os.walk('src/main/resources'):
+              for file in files:
+                  if file.endswith('.json'):
+                      path = os.path.join(root, file)
+                      try:
+                          with open(path, encoding='utf-8') as f:
+                              json.load(f)
+                          checked += 1
+                      except json.JSONDecodeError as e:
+                          errors.append(f'{path}: {e}')
+          print(f'Проверено: {checked} файлов')
+          if errors:
+              print('ОШИБКИ:')
+              [print(e) for e in errors]
               sys.exit(1)
-            " || ERRORS=$((ERRORS+1))
-          done
-
-          echo "📋 Проверка .animation.json файлов..."
-          find src/main/resources/assets -name "*.animation.json" | while read f; do
-            python3 -c "
-          import json, sys
-          try:
-              with open('$f') as file:
-                  json.load(file)
-              print(f'  ✅ $f')
-          except json.JSONDecodeError as e:
-              print(f'  ❌ $f: {e}')
-              sys.exit(1)
-            "
-          done
-
-          echo "📋 Проверка sounds.json..."
-          if [ -f "src/main/resources/assets/symbolmod/sounds.json" ]; then
-            python3 -c "
-          import json
-          with open('src/main/resources/assets/symbolmod/sounds.json') as f:
-              json.load(f)
-          print('  ✅ sounds.json валиден')
-            "
-          fi
+          print('Все JSON валидны!')
+          "
 
       - name: 📤 Загрузка JAR как артефакт
         uses: actions/upload-artifact@v4
@@ -193,20 +150,19 @@ jobs:
             !build/libs/*-sources.jar
           retention-days: 30
 
-      - name: 📊 Информация о сборке
+      - name: 📊 Итог сборки
         run: |
           echo "================================================"
           echo "  🎬 МОД СИМВОЛ — СБОРКА ЗАВЕРШЕНА"
           echo "================================================"
           echo "  📦 Версия:    ${{ steps.get_version.outputs.version }}"
           echo "  🎮 Minecraft: ${{ steps.get_version.outputs.mc_version }}"
-          echo "  📁 JAR:       ${{ steps.get_version.outputs.jar_name }}.jar"
           echo "  🌿 Ветка:     ${{ github.ref_name }}"
           echo "  💬 Коммит:    ${{ github.sha }}"
           echo "================================================"
 
   # ============================================================
-  # JOB 3 — РЕЛИЗ (только при создании тега)
+  # JOB 3 — РЕЛИЗ
   # ============================================================
   release:
     name: 🚀 Публикация релиза
@@ -238,18 +194,14 @@ jobs:
             ## 🎬 Символ — Версия ${{ needs.build.outputs.mod_version }}
 
             ### 📦 Установка
-            1. Установите [Fabric Loader](https://fabricmc.net/use/installer/)
-            2. Установите [Fabric API](https://modrinth.com/mod/fabric-api)
-            3. Установите [GeckoLib](https://modrinth.com/mod/geckolib)
-            4. Поместите `${{ needs.build.outputs.jar_name }}.jar` в папку `mods/`
+            1. [Fabric Loader](https://fabricmc.net/use/installer/)
+            2. [Fabric API](https://modrinth.com/mod/fabric-api)
+            3. [GeckoLib](https://modrinth.com/mod/geckolib)
+            4. JAR → папка `mods/`
 
             ### 🎮 Требования
-            - Minecraft: 1.20.1
-            - Fabric Loader: ≥ 0.15.0
-            - Fabric API: 0.92.0+1.20.1
-            - GeckoLib: 4.4
-
-            ### ⚠️ Важно
-            Мод создан **исключительно** для карты «Символ».
+            - Minecraft: `${{ needs.build.outputs.mc_version }}`
+            - Fabric Loader: `≥ 0.15.0`
+            - GeckoLib: `4.4`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

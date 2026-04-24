@@ -1,427 +1,436 @@
 package com.symbolmod.ui;
 
+import com.symbolmod.cutscene.CutsceneManager;
+import com.symbolmod.item.DirectorWandItem;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 public class DirectorWandScreen extends Screen {
 
-    private static final int PANEL_WIDTH = 320;
-    private static final int PANEL_HEIGHT = 240;
+    private static final int W = 340;
+    private static final int H = 260;
 
-    private static final int COLOR_BG = 0xFF1A1A1A;
-    private static final int COLOR_HEADER = 0xFF2A2A2A;
-    private static final int COLOR_ACCENT = 0xFFB8860B;
-    private static final int COLOR_TEXT = 0xFFE8E8E8;
-    private static final int COLOR_HOVER = 0xFF3A3A3A;
-    private static final int COLOR_BUTTON = 0xFF2A2A2A;
+    private static final int COL_BG      = 0xFF111111;
+    private static final int COL_HEADER  = 0xFF1C1C1C;
+    private static final int COL_ACCENT  = 0xFFB8860B;
+    private static final int COL_TEXT    = 0xFFE0E0E0;
+    private static final int COL_BTN     = 0xFF222222;
+    private static final int COL_BTN_HOV = 0xFF333333;
+    private static final int COL_GREEN   = 0xFF145214;
+    private static final int COL_RED     = 0xFF8B0000;
+    private static final int COL_BLUE    = 0xFF003366;
 
-    private int currentTab = 0;
+    private int tab = 0;
     private static final String[] TABS = {
-        "КАТСЦЕНЫ", "NPC", "КНОПКИ", "БЛОКИ", "КАМЕРА"
+        "КАТСЦЕНЫ", "NPC", "КАМЕРА", "КНОПКИ", "БЛОКИ"
     };
 
-    // Состояние для каждой вкладки
-    private String selectedCutscene = "";
-    private String selectedNpc = "";
-    private float cameraSpeed = 1.0f;
+    // Поле ввода имени пути камеры
+    private TextFieldWidget pathNameField;
+    // Поле ввода команды для кнопки
+    private TextFieldWidget buttonCommandField;
+
+    // Выбранный NPC
+    private int selectedNpcIndex = 0;
+    // Выбранная катсцена
+    private int selectedCutsceneIndex = 0;
+
+    private static final String[] NPC_TYPES = {
+        "detective", "boss", "babushka_nina", "rashid",
+        "tolya", "semyonych", "gromov", "valeriya",
+        "mother", "father"
+    };
+    private static final String[] NPC_LABELS = {
+        "Детектив", "Начальник", "Бабушка Нина", "Рашид",
+        "Толя", "Семёныч", "Громов", "Валерия",
+        "Мама", "Папа"
+    };
+    private static final String[] CUTSCENES = {
+        "act0_firing",
+        "act1_factory_arrive",
+        "act1_glass_room",
+        "act2_village_enter",
+        "act2_gromov_talk",
+        "ending_a_truth",
+        "ending_b_replacement",
+        "ending_c_denial",
+        "ending_d_observer"
+    };
+    private static final String[] CUTSCENE_LABELS = {
+        "Акт 0 — Увольнение",
+        "Акт 1 — Прибытие на завод",
+        "Акт 1 — Финальная комната",
+        "Акт 2 — Вход в деревню",
+        "Акт 2 — Разговор с Громовым",
+        "Концовка A — Правда",
+        "Концовка B — Замена",
+        "Концовка C — Отрицание",
+        "Концовка D — Наблюдатель"
+    };
 
     public DirectorWandScreen() {
         super(Text.literal("Палочка Режиссёра"));
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        int startX = (this.width - PANEL_WIDTH) / 2;
-        int startY = (this.height - PANEL_HEIGHT) / 2;
+    protected void init() {
+        super.init();
 
-        // Тёмный фон
-        context.fill(0, 0, this.width, this.height, 0xAA000000);
+        int sx = (this.width - W) / 2;
+        int sy = (this.height - H) / 2;
 
-        // Основная панель
-        context.fill(startX, startY,
-                     startX + PANEL_WIDTH, startY + PANEL_HEIGHT,
-                     COLOR_BG);
-
-        // Заголовок
-        context.fill(startX, startY,
-                     startX + PANEL_WIDTH, startY + 25,
-                     COLOR_HEADER);
-
-        context.drawCenteredTextWithShadow(
+        // Поле имени пути камеры
+        pathNameField = new TextFieldWidget(
             this.textRenderer,
-            "§6✦ ПАЛОЧКА РЕЖИССЁРА ✦",
-            startX + PANEL_WIDTH / 2,
-            startY + 8,
-            COLOR_ACCENT
+            sx + 10, sy + 170, 160, 16,
+            Text.literal("Имя пути")
         );
+        pathNameField.setMaxLength(32);
+        pathNameField.setText("my_path");
+        this.addDrawableChild(pathNameField);
 
-        // Кнопка закрытия
-        boolean closeHover = mouseX >= startX + PANEL_WIDTH - 22 &&
-                             mouseX <= startX + PANEL_WIDTH - 5 &&
-                             mouseY >= startY + 4 && mouseY <= startY + 21;
-
-        context.fill(startX + PANEL_WIDTH - 22, startY + 4,
-                     startX + PANEL_WIDTH - 5, startY + 21,
-                     closeHover ? 0xFF8B0000 : 0xFF550000);
-        context.drawCenteredTextWithShadow(
-            this.textRenderer, "✕",
-            startX + PANEL_WIDTH - 13, startY + 8,
-            0xFFFFFFFF
+        // Поле команды кнопки
+        buttonCommandField = new TextFieldWidget(
+            this.textRenderer,
+            sx + 10, sy + 195, 230, 16,
+            Text.literal("Команда")
         );
+        buttonCommandField.setMaxLength(256);
+        buttonCommandField.setText("/function symbolmod:start_act0");
+        this.addDrawableChild(buttonCommandField);
+
+        // Скрываем поля по умолчанию
+        updateFieldVisibility();
+
+        buildTabButtons(sx, sy);
+    }
+
+    private void buildTabButtons(int sx, int sy) {
+        clearChildren();
 
         // Вкладки
-        renderTabs(context, startX, startY + 25, mouseX, mouseY);
+        int tabW = W / TABS.length;
+        for (int i = 0; i < TABS.length; i++) {
+            final int ti = i;
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal(TABS[i]),
+                btn -> {
+                    tab = ti;
+                    updateFieldVisibility();
+                    buildTabButtons(sx, sy);
+                }
+            ).dimensions(sx + i * tabW + 1, sy + 26, tabW - 2, 20).build());
+        }
 
         // Контент вкладки
-        renderTabContent(context, startX + 5, startY + 55,
-                         PANEL_WIDTH - 10, PANEL_HEIGHT - 70,
-                         mouseX, mouseY);
+        switch (tab) {
+            case 0 -> buildCutscenesButtons(sx, sy);
+            case 1 -> buildNpcButtons(sx, sy);
+            case 2 -> buildCameraButtons(sx, sy);
+            case 3 -> buildButtonsTab(sx, sy);
+            case 4 -> buildBlocksTab(sx, sy);
+        }
 
-        // Граница
-        drawBorder(context, startX, startY, PANEL_WIDTH, PANEL_HEIGHT, COLOR_ACCENT);
-
-        super.render(context, mouseX, mouseY, delta);
+        // Кнопка закрытия
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("✕"),
+            btn -> this.close()
+        ).dimensions(sx + W - 22, sy + 4, 18, 18).build());
     }
 
-    // ============ ВКЛАДКИ ============
+    // ============ ВКЛАДКА КАТСЦЕН ============
 
-    private void renderTabs(DrawContext context, int x, int y,
-                            int mouseX, int mouseY) {
-        int tabWidth = PANEL_WIDTH / TABS.length;
+    private void buildCutscenesButtons(int sx, int sy) {
+        int btnY = sy + 55;
 
-        for (int i = 0; i < TABS.length; i++) {
-            int tx = x + i * tabWidth;
-            boolean isSelected = (i == currentTab);
-            boolean isHovered = mouseX >= tx && mouseX <= tx + tabWidth
-                             && mouseY >= y && mouseY <= y + 22;
+        for (int i = 0; i < CUTSCENES.length; i++) {
+            final int idx = i;
+            final String id = CUTSCENES[i];
 
-            context.fill(
-                tx + 1, y + 1,
-                tx + tabWidth - 1, y + 22,
-                isSelected ? COLOR_ACCENT : (isHovered ? COLOR_HOVER : COLOR_HEADER)
-            );
+            // Кнопка выбора
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal((selectedCutsceneIndex == i ? "§6▶ " : "§7  ") + CUTSCENE_LABELS[i]),
+                btn -> {
+                    selectedCutsceneIndex = idx;
+                    DirectorWandItem.setSelectedCutscene(id);
+                    buildTabButtons(sx, sy);
+                }
+            ).dimensions(sx + 5, btnY + i * 20, W - 90, 18).build());
 
-            context.drawCenteredTextWithShadow(
-                this.textRenderer,
-                isSelected ? "§0" + TABS[i] : "§7" + TABS[i],
-                tx + tabWidth / 2,
-                y + 7,
-                isSelected ? 0xFF000000 : COLOR_TEXT
-            );
+            // Кнопка ЗАПУСТИТЬ
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal("▶ PLAY"),
+                btn -> sendWandCommand("cutscene_play " + id)
+            ).dimensions(sx + W - 82, btnY + i * 20, 75, 18).build());
         }
     }
 
-    // ============ КОНТЕНТ ВКЛАДОК ============
+    // ============ ВКЛАДКА NPC ============
 
-    private void renderTabContent(DrawContext context, int x, int y,
-                                  int w, int h, int mouseX, int mouseY) {
-        switch (currentTab) {
-            case 0 -> renderCutscenesTab(context, x, y, w, h, mouseX, mouseY);
-            case 1 -> renderNpcTab(context, x, y, w, h, mouseX, mouseY);
-            case 2 -> renderButtonsTab(context, x, y, w, h, mouseX, mouseY);
-            case 3 -> renderBlocksTab(context, x, y, w, h, mouseX, mouseY);
-            case 4 -> renderCameraTab(context, x, y, w, h, mouseX, mouseY);
+    private void buildNpcButtons(int sx, int sy) {
+        int btnY = sy + 55;
+        int cols = 2;
+        int cellW = (W - 15) / cols;
+
+        for (int i = 0; i < NPC_TYPES.length; i++) {
+            final int idx = i;
+            final String type = NPC_TYPES[i];
+            int col = i % cols;
+            int row = i / cols;
+
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal((selectedNpcIndex == i ? "§6" : "§f") + NPC_LABELS[i]),
+                btn -> {
+                    selectedNpcIndex = idx;
+                    DirectorWandItem.setSelectedNpc(type);
+                    DirectorWandItem.setMode(DirectorWandItem.WandMode.PLACE_NPC);
+                    buildTabButtons(sx, sy);
+                }
+            ).dimensions(
+                sx + 5 + col * (cellW + 5),
+                btnY + row * 22,
+                cellW, 20
+            ).build());
         }
+
+        // Кнопка смены режима
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§aРежим: РАЗМЕЩЕНИЕ NPC"),
+            btn -> {
+                DirectorWandItem.setMode(DirectorWandItem.WandMode.PLACE_NPC);
+                btn.setMessage(Text.literal("§aРежим: РАЗМЕЩЕНИЕ NPC ✓"));
+            }
+        ).dimensions(sx + 5, sy + H - 45, W - 10, 18).build());
     }
 
-    // --- ВКЛАДКА КАТСЦЕН ---
+    // ============ ВКЛАДКА КАМЕРЫ ============
 
-    private void renderCutscenesTab(DrawContext context, int x, int y,
-                                    int w, int h, int mouseX, int mouseY) {
-        context.drawTextWithShadow(
-            this.textRenderer, "§6Доступные катсцены:", x, y, COLOR_TEXT
-        );
+    private void buildCameraButtons(int sx, int sy) {
 
-        String[] cutscenes = {
-            "act0_firing",
-            "act1_glass_room",
-            "act2_gromov_talk",
-            "ending_a_truth",
-            "ending_b_replacement",
-            "ending_c_denial",
-            "ending_d_observer"
-        };
+        // Режим камеры
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§e📍 Режим: ДОБАВЛЕНИЕ ТОЧЕК"),
+            btn -> {
+                DirectorWandItem.setMode(DirectorWandItem.WandMode.CAMERA);
+                sendWandCommand("mode camera");
+            }
+        ).dimensions(sx + 5, sy + 55, W - 10, 20).build());
 
-        for (int i = 0; i < cutscenes.length; i++) {
-            int btnY = y + 15 + i * 20;
-            boolean hovered = mouseX >= x && mouseX <= x + w - 80
-                           && mouseY >= btnY && mouseY <= btnY + 16;
-            boolean selected = cutscenes[i].equals(selectedCutscene);
+        // Предпросмотр
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§b🎬 Предпросмотр пути"),
+            btn -> sendWandCommand("camera_preview")
+        ).dimensions(sx + 5, sy + 78, W - 10, 20).build());
 
-            context.fill(x, btnY, x + w - 85, btnY + 16,
-                selected ? 0xFF8B4513 : (hovered ? COLOR_HOVER : COLOR_BUTTON));
+        // Очистить
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§c🗑 Очистить все точки"),
+            btn -> sendWandCommand("camera_clear")
+        ).dimensions(sx + 5, sy + 101, W - 10, 20).build());
 
-            context.drawTextWithShadow(
-                this.textRenderer,
-                "§f" + cutscenes[i],
-                x + 5, btnY + 4, COLOR_TEXT
-            );
+        // Сохранить
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§a💾 Сохранить путь"),
+            btn -> {
+                String name = pathNameField.getText().trim();
+                if (!name.isEmpty()) {
+                    sendWandCommand("camera_save " + name);
+                }
+            }
+        ).dimensions(sx + 5, sy + 155, W / 2 - 8, 20).build());
 
-            // Кнопка запуска
-            boolean playHover = mouseX >= x + w - 80 && mouseX <= x + w - 5
-                             && mouseY >= btnY && mouseY <= btnY + 16;
-            context.fill(x + w - 80, btnY, x + w - 5, btnY + 16,
-                playHover ? 0xFF228B22 : 0xFF145214);
-            context.drawCenteredTextWithShadow(
-                this.textRenderer, "▶ ИГРАТЬ",
-                x + w - 42, btnY + 4, 0xFF90EE90
-            );
-        }
+        // Загрузить
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§6📂 Загрузить путь"),
+            btn -> {
+                String name = pathNameField.getText().trim();
+                if (!name.isEmpty()) {
+                    sendWandCommand("camera_load " + name);
+                }
+            }
+        ).dimensions(sx + W / 2 + 3, sy + 155, W / 2 - 8, 20).build());
+
+        // Поле имени
+        pathNameField.setVisible(true);
+        pathNameField.setX(sx + 5);
+        pathNameField.setY(sy + 133);
     }
 
-    // --- ВКЛАДКА NPC ---
+    // ============ ВКЛАДКА КНОПОК ============
 
-    private void renderNpcTab(DrawContext context, int x, int y,
-                               int w, int h, int mouseX, int mouseY) {
-        context.drawTextWithShadow(
-            this.textRenderer, "§6NPC персонажи:", x, y, COLOR_TEXT
-        );
+    private void buildButtonsTab(int sx, int sy) {
 
-        String[] npcs = {
-            "detective", "boss", "babushka_nina",
-            "rashid", "tolya", "semyonych", "gromov", "valeriya",
-            "mother", "father"
-        };
-        String[] labels = {
-            "Детектив", "Начальник", "Бабушка Нина",
-            "Рашид", "Толя", "Семёныч", "Громов", "Валерия",
-            "Мама", "Папа"
+        // Большая кнопка НАЧАТЬ
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§6★ Создать кнопку «НАЧАТЬ»"),
+            btn -> {
+                DirectorWandItem.setMode(DirectorWandItem.WandMode.BUTTON);
+                sendWandCommand("create_start_button");
+                this.close();
+            }
+        ).dimensions(sx + 5, sy + 55, W - 10, 22).build());
+
+        // Кнопка выбора диалога
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§b◆ Создать кнопку выбора"),
+            btn -> {
+                DirectorWandItem.setMode(DirectorWandItem.WandMode.BUTTON);
+                sendWandCommand("create_choice_button");
+                this.close();
+            }
+        ).dimensions(sx + 5, sy + 80, W - 10, 22).build());
+
+        // Подпись команды
+        buttonCommandField.setVisible(true);
+        buttonCommandField.setX(sx + 5);
+        buttonCommandField.setY(sy + 130);
+
+        // Привязать команду
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§a✓ Привязать команду"),
+            btn -> {
+                String cmd = buttonCommandField.getText().trim();
+                if (!cmd.isEmpty()) {
+                    sendWandCommand("bind_command " + cmd);
+                }
+            }
+        ).dimensions(sx + 5, sy + 150, W - 10, 20).build());
+
+        // Удалить кнопку
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("§c✕ Удалить выбранную кнопку"),
+            btn -> sendWandCommand("delete_button")
+        ).dimensions(sx + 5, sy + 174, W - 10, 20).build());
+    }
+
+    // ============ ВКЛАДКА БЛОКОВ ============
+
+    private void buildBlocksTab(int sx, int sy) {
+        String[][] blocks = {
+            {"Прогнившие доски",        "rotten_planks"},
+            {"Прогн. доски (трещины)",  "rotten_planks_cracked"},
+            {"Прогн. доски (обвал)",    "rotten_planks_collapsed"},
+            {"Советская плитка белая",  "soviet_tiles_white"},
+            {"Советская плитка зелёная","soviet_tiles_green"},
+            {"Советская плитка грязная","soviet_tiles_dirty"},
+            {"Ржавая металл. панель",   "rusty_metal_panel"},
+            {"Ржавая труба",            "pipe_rusty"},
+            {"Вентиляц. решётка",       "vent_grate"},
+            {"Старое стекло",           "old_glass"},
+            {"Треснутое стекло",        "cracked_glass"},
+            {"Линолеум",                "linoleum_brown"},
+            {"Линолеум облезший",       "linoleum_peeled"},
+            {"Обои с цветами",          "wallpaper_floral"},
+            {"Рваные обои",             "wallpaper_torn"},
+            {"Бетонная плита",          "concrete_slab_clean"}
         };
 
         int cols = 2;
-        int cellW = (w - 10) / cols;
+        int cellW = (W - 15) / cols;
+        int maxShow = 10;
 
-        for (int i = 0; i < npcs.length; i++) {
+        for (int i = 0; i < Math.min(maxShow, blocks.length); i++) {
+            final String blockId = blocks[i][1];
             int col = i % cols;
             int row = i / cols;
-            int bx = x + col * cellW;
-            int by = y + 15 + row * 22;
 
-            boolean hovered = mouseX >= bx && mouseX <= bx + cellW - 5
-                           && mouseY >= by && mouseY <= by + 18;
-
-            context.fill(bx, by, bx + cellW - 5, by + 18,
-                hovered ? COLOR_HOVER : COLOR_BUTTON);
-
-            context.drawTextWithShadow(
-                this.textRenderer,
-                "§f+ §e" + labels[i],
-                bx + 5, by + 5, COLOR_TEXT
-            );
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal("§f" + blocks[i][0]),
+                btn -> sendWandCommand("give_block " + blockId)
+            ).dimensions(
+                sx + 5 + col * (cellW + 5),
+                sy + 55 + row * 20,
+                cellW, 18
+            ).build());
         }
-
-        // Подсказка
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§8ПКМ на блок чтобы разместить NPC",
-            x, y + h - 15, 0xFF666666
-        );
     }
 
-    // --- ВКЛАДКА КНОПОК ---
+    // ============ ОТПРАВКА КОМАНД НА СЕРВЕР ============
 
-    private void renderButtonsTab(DrawContext context, int x, int y,
-                                   int w, int h, int mouseX, int mouseY) {
-        context.drawTextWithShadow(
-            this.textRenderer, "§6Типы 3D кнопок:", x, y, COLOR_TEXT
-        );
-
-        // Большая кнопка НАЧАТЬ
-        boolean hBig = mouseX >= x && mouseX <= x + w - 5
-                    && mouseY >= y + 20 && mouseY <= y + 50;
-        context.fill(x, y + 20, x + w - 5, y + 50,
-            hBig ? 0xFF8B4513 : COLOR_BUTTON);
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§6★ Большая кнопка «НАЧАТЬ»",
-            x + 10, y + 28, COLOR_TEXT
-        );
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§8Запускает катсцену при нажатии",
-            x + 10, y + 38, 0xFF888888
-        );
-
-        // Кнопка выбора
-        boolean hChoice = mouseX >= x && mouseX <= x + w - 5
-                       && mouseY >= y + 60 && mouseY <= y + 90;
-        context.fill(x, y + 60, x + w - 5, y + 90,
-            hChoice ? 0xFF8B4513 : COLOR_BUTTON);
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§6◆ Кнопка выбора диалога",
-            x + 10, y + 68, COLOR_TEXT
-        );
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§8Блокирует игрока до выбора",
-            x + 10, y + 78, 0xFF888888
-        );
-
-        // Поле команды
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§7Команда при нажатии:",
-            x, y + 105, COLOR_TEXT
-        );
-        context.fill(x, y + 118, x + w - 5, y + 135, 0xFF111111);
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§8/function symbolmod:start_act0",
-            x + 5, y + 123, 0xFF666666
-        );
-    }
-
-    // --- ВКЛАДКА БЛОКОВ ---
-
-    private void renderBlocksTab(DrawContext context, int x, int y,
-                                  int w, int h, int mouseX, int mouseY) {
-        context.drawTextWithShadow(
-            this.textRenderer, "§6Декоративные блоки:", x, y, COLOR_TEXT
-        );
-
-        String[][] blocks = {
-            {"Прогнившие доски", "rotten_planks"},
-            {"Прогн. доски (трещины)", "rotten_planks_cracked"},
-            {"Прогн. доски (обвал)", "rotten_planks_collapsed"},
-            {"Советская плитка белая", "soviet_tiles_white"},
-            {"Советская плитка зелёная", "soviet_tiles_green"},
-            {"Советская плитка грязная", "soviet_tiles_dirty"},
-            {"Ржавая металл. панель", "rusty_metal_panel"},
-            {"Старое стекло", "old_glass"},
-            {"Треснутое стекло", "cracked_glass"},
-            {"Бетонная плита", "concrete_slab_clean"},
-            {"Линолеум", "linoleum_brown"},
-            {"Линолеум (облезший)", "linoleum_peeled"},
-            {"Обои с цветами", "wallpaper_floral"},
-            {"Рваные обои", "wallpaper_torn"},
-            {"Ржавая труба", "pipe_rusty"},
-            {"Вентиляционная решётка", "vent_grate"}
-        };
-
-        int maxVisible = 8;
-        for (int i = 0; i < Math.min(maxVisible, blocks.length); i++) {
-            int by = y + 15 + i * 20;
-            boolean hovered = mouseX >= x && mouseX <= x + w - 5
-                           && mouseY >= by && mouseY <= by + 16;
-
-            context.fill(x, by, x + w - 5, by + 16,
-                hovered ? COLOR_HOVER : COLOR_BUTTON);
-
-            context.drawTextWithShadow(
-                this.textRenderer,
-                "§f" + blocks[i][0],
-                x + 5, by + 4, COLOR_TEXT
-            );
-
-            // Кнопка выдачи
-            boolean giveHover = mouseX >= x + w - 55 && mouseX <= x + w - 5
-                             && mouseY >= by && mouseY <= by + 16;
-            context.fill(x + w - 55, by, x + w - 5, by + 16,
-                giveHover ? 0xFF006400 : 0xFF003200);
-            context.drawCenteredTextWithShadow(
-                this.textRenderer, "ВЗЯТЬ",
-                x + w - 30, by + 4, 0xFF90EE90
+    private void sendWandCommand(String command) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player != null) {
+            client.player.networkHandler.sendCommand(
+                "symbolmod_wand " + command
             );
         }
     }
 
-    // --- ВКЛАДКА КАМЕРЫ ---
-
-    private void renderCameraTab(DrawContext context, int x, int y,
-                                  int w, int h, int mouseX, int mouseY) {
-        context.drawTextWithShadow(
-            this.textRenderer, "§6Настройки камеры:", x, y, COLOR_TEXT
-        );
-
-        // Кнопки добавления точек
-        renderWandButton(context, x, y + 20, w, "➕ Добавить точку камеры здесь",
-                         mouseX, mouseY);
-        renderWandButton(context, x, y + 42, w, "🎬 Предпросмотр пути камеры",
-                         mouseX, mouseY);
-        renderWandButton(context, x, y + 64, w, "🗑 Очистить все точки",
-                         mouseX, mouseY);
-        renderWandButton(context, x, y + 86, w, "💾 Сохранить путь камеры",
-                         mouseX, mouseY);
-
-        // Скорость
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§7Скорость: §f" + String.format("%.1f", cameraSpeed) + "x",
-            x, y + 115, COLOR_TEXT
-        );
-        // Ползунок скорости
-        int sliderX = x + 80;
-        int sliderW = w - 85;
-        context.fill(sliderX, y + 113, sliderX + sliderW, y + 120, 0xFF333333);
-        int thumbX = (int)(sliderX + (cameraSpeed / 3.0f) * sliderW);
-        context.fill(thumbX - 3, y + 110, thumbX + 3, y + 123, COLOR_ACCENT);
-
-        // Список точек
-        context.drawTextWithShadow(
-            this.textRenderer,
-            "§7Точки пути: §f0 добавлено",
-            x, y + 135, COLOR_TEXT
-        );
+    private void updateFieldVisibility() {
+        if (pathNameField != null) {
+            pathNameField.setVisible(tab == 2);
+        }
+        if (buttonCommandField != null) {
+            buttonCommandField.setVisible(tab == 3);
+        }
     }
 
-    private void renderWandButton(DrawContext context, int x, int y, int w,
-                                   String label, int mouseX, int mouseY) {
-        boolean hovered = mouseX >= x && mouseX <= x + w - 5
-                       && mouseY >= y && mouseY <= y + 18;
-        context.fill(x, y, x + w - 5, y + 18,
-            hovered ? COLOR_HOVER : COLOR_BUTTON);
-        context.drawTextWithShadow(
-            this.textRenderer, "§f" + label,
-            x + 7, y + 5, COLOR_TEXT
-        );
-    }
-
-    // ============ ВСПОМОГАТЕЛЬНЫЕ ============
-
-    private void drawBorder(DrawContext ctx, int x, int y, int w, int h, int color) {
-        ctx.fill(x, y, x + w, y + 1, color);         // верх
-        ctx.fill(x, y + h - 1, x + w, y + h, color); // низ
-        ctx.fill(x, y, x + 1, y + h, color);          // лево
-        ctx.fill(x + w - 1, y, x + w, y + h, color);  // право
-    }
-
-    // ============ ВВОД ============
+    // ============ РЕНДЕР ============
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int startX = (this.width - PANEL_WIDTH) / 2;
-        int startY = (this.height - PANEL_HEIGHT) / 2;
+    public void render(DrawContext ctx, int mx, int my, float delta) {
+        int sx = (this.width - W) / 2;
+        int sy = (this.height - H) / 2;
 
-        // Вкладки
-        int tabW = PANEL_WIDTH / TABS.length;
-        for (int i = 0; i < TABS.length; i++) {
-            int tx = startX + i * tabW;
-            if (mouseX >= tx && mouseX <= tx + tabW
-                    && mouseY >= startY + 25 && mouseY <= startY + 47) {
-                currentTab = i;
-                return true;
-            }
+        // Затемнение
+        ctx.fill(0, 0, this.width, this.height, 0xAA000000);
+
+        // Панель
+        ctx.fill(sx, sy, sx + W, sy + H, COL_BG);
+
+        // Заголовок
+        ctx.fill(sx, sy, sx + W, sy + 25, COL_HEADER);
+        ctx.drawCenteredTextWithShadow(
+            this.textRenderer,
+            "§6✦ ПАЛОЧКА РЕЖИССЁРА ✦  §8[Режим: " +
+            DirectorWandItem.getMode().name() + "]",
+            sx + W / 2, sy + 8, COL_ACCENT
+        );
+
+        // Граница
+        ctx.fill(sx,       sy,       sx + W, sy + 1,     COL_ACCENT);
+        ctx.fill(sx,       sy + H-1, sx + W, sy + H,     COL_ACCENT);
+        ctx.fill(sx,       sy,       sx + 1, sy + H,     COL_ACCENT);
+        ctx.fill(sx + W-1, sy,       sx + W, sy + H,     COL_ACCENT);
+
+        // Разделитель вкладок
+        ctx.fill(sx, sy + 46, sx + W, sy + 47, COL_ACCENT);
+
+        // Счётчик точек камеры
+        if (tab == 2) {
+            ctx.drawTextWithShadow(
+                this.textRenderer,
+                "§7Точек записано: §f" +
+                DirectorWandItem.getWaypoints().size(),
+                sx + 5, sy + 105, COL_TEXT
+            );
+            ctx.drawTextWithShadow(
+                this.textRenderer,
+                "§7Имя пути:",
+                sx + 5, sy + 122, COL_TEXT
+            );
         }
 
-        // Закрытие
-        if (mouseX >= startX + PANEL_WIDTH - 22 && mouseX <= startX + PANEL_WIDTH - 5
-                && mouseY >= startY + 4 && mouseY <= startY + 21) {
-            this.close();
-            return true;
+        if (tab == 3) {
+            ctx.drawTextWithShadow(
+                this.textRenderer,
+                "§7Команда при нажатии:",
+                sx + 5, sy + 118, COL_TEXT
+            );
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        super.render(ctx, mx, my, delta);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) {
-            this.close();
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+    public boolean keyPressed(int key, int scan, int mods) {
+        if (key == 256) { this.close(); return true; }
+        return super.keyPressed(key, scan, mods);
     }
 
     @Override
